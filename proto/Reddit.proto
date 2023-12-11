@@ -1,0 +1,168 @@
+syntax = "proto3"; // optional key word omitted
+
+package reddit;
+
+// Service definition
+service RedditService {
+    rpc CreatePost(CreateRequest) returns (CreatePostResponse);
+    rpc VotePost(VotePostRequest) returns (VotePostResponse);
+    rpc RetrievePostContent(RetrievePostContentRequest) returns (RetrievePostContentResponse);
+    rpc CreateComment(CreateCommentRequest) returns (CreateCommentResponse);
+    rpc VoteComment(VoteCommentRequest) returns (VoteCommentResponse);
+
+    rpc GetTopComments(TopCommentsRequest) returns (TopCommentsResponse) {}
+    rpc ExpandCommentBranch(ExpandCommentBranchRequest) returns (ExpandCommentBranchResponse) {}
+    rpc MonitorUpdates(stream MonitorUpdatesRequest) returns (stream MonitorUpdatesResponse) {}
+    
+    rpc CreateSubreddit(Subreddit) returns (Subreddit);
+    rpc GetSubredditInfo(SubredditRequest) returns (Subreddit);
+}
+
+// Enumerations for post and comment status
+enum PostStatus {
+    NORMAL = 0;
+    LOCKED = 1;
+    HIDDEN = 2;
+}
+
+enum CommentStatus {
+    NORMAL_COMMENT = 0;
+    HIDDEN_COMMENT = 1;
+}
+
+enum SubredditStatus {
+    NORMAL_SUBREDDIT = 0;
+    LOCKED_SUBREDDIT = 1;
+    HIDDEN_SUBREDDIT = 2;
+}
+
+// Data models
+message User {
+    string user_id = 1;
+}
+
+message Post { 
+    int64 post_id = 1;
+    string title = 2;
+    string text = 3;
+    oneof media {
+        string video_url = 4;
+        string image_url = 5;
+    }
+    User author = 6;
+    int64 score = 7;
+    PostStatus status = 8;
+    string publication_date = 9;
+    
+}
+
+message Comment {
+    int64 comment_id = 1;
+    int64 parent_post_id = 2;
+    int64 parent_comment_id = 3;
+    User author = 4;
+    string text = 5;
+    int64 score = 6;
+    CommentStatus status = 7;
+    string publication_date = 8;
+}
+
+message Subreddit {
+    string name = 1; 
+    SubredditStatus status = 2; 
+    repeated string tags = 3; 
+}
+
+message SubredditRequest {
+    string name = 1; // The name of the subreddit being requested.
+}
+
+message CreateRequest {
+  optional Post post = 1;
+}
+
+message CreatePostResponse {
+  bool success = 1;
+  int64 post_id = 2;
+}
+
+message VotePostRequest {
+    int64 post_id = 1;
+    User user = 2;
+    bool is_upvote = 3; // true for upvote, false for downvote
+}
+
+message VotePostResponse {
+    bool success = 1;
+    int64 new_score = 2;
+}
+
+message VoteCommentRequest {
+    string comment_id = 1;
+    User user = 2;
+    bool is_upvote = 3; // true for upvote, false for downvote
+}
+
+message VoteCommentResponse { 
+    bool success = 1;
+    int32 new_score = 2;
+}
+
+message RetrievePostContentRequest { 
+    string post_id = 1;
+}
+
+message RetrievePostContentResponse { 
+    bool success = 1;
+    Post post = 2;
+}
+
+message CreateCommentRequest { 
+    Comment comment = 1;
+}
+
+message CreateCommentResponse { 
+    bool success = 1;
+    int64 id = 2;
+}
+
+message TopCommentsRequest {
+    string post_id = 1;
+    int32 limit = 2; // The number of most popular comments N (at most N)
+}
+
+message SubCommentDetails { 
+  optional Comment comment = 1;
+  optional bool has_replies = 2; // A sign indicating whether there is a response to the comment
+}
+
+message TopCommentsResponse { 
+    repeated SubCommentDetails comments = 1; // List of the most popular reviews
+}
+
+message ExpandCommentBranchRequest {
+    string comment_id = 1; // The ID of the selected comment
+    int32 limit = 2; // The number of most popular comments N
+}
+
+// Define a message with a tree structure of comments and sub-comments
+message CommentBranch {
+    Comment parent_comment = 1;
+    repeated Comment sub_comments = 2;
+}
+
+message ExpandCommentBranchResponse {
+    repeated CommentBranch branches = 1; // Can have multiple comments
+}
+
+message MonitorUpdatesRequest {
+    string post_id = 1; // Post ID
+    repeated string comment_ids = 2; // Comment List, allows continuously add
+}
+
+message MonitorUpdatesResponse {
+    oneof update {
+        Post post_update = 1; // Post Score Update
+        Comment comment_update = 2; // Comment Score Update
+    }
+}
